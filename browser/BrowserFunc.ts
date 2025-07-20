@@ -4,6 +4,7 @@ import { AxiosRequestConfig } from 'axios'
 
 import { MicrosoftRewardsBot } from '../src/index'
 import { saveSessionData } from '../utils/Load'
+import { ManagedBrowser } from './Browser'
 
 import { Counters, DashboardData, MorePromotion, PromotionalItem } from './../interfaces/DashboardData'
 import { QuizData } from './../interfaces/QuizData'
@@ -613,18 +614,53 @@ export default class BrowserFunc {
         return selector
     }
 
-    async closeBrowser(browser: BrowserContext, email: string) {
+    async closeBrowser(managedBrowser: ManagedBrowser) {
+        try {
+            // Save cookies
+            await saveSessionData(this.bot.config.sessionPath, managedBrowser.context, managedBrowser.email, managedBrowser.isMobile)
+
+            await this.bot.utils.wait(2000)
+
+            // Close browser context first
+            await managedBrowser.context.close()
+            this.bot.log(managedBrowser.isMobile, 'CLOSE-BROWSER', 'Browser context closed')
+
+            // Then close the browser instance to prevent process leakage
+            await managedBrowser.browserInstance.close()
+            this.bot.log(managedBrowser.isMobile, 'CLOSE-BROWSER', 'Browser instance closed cleanly!')
+
+        } catch (error) {
+            this.bot.log(managedBrowser.isMobile, 'CLOSE-BROWSER', `An error occurred: ${error}`, 'error')
+
+            // Attempt force cleanup if normal close fails
+            try {
+                if (managedBrowser.context && !(managedBrowser.context as any).isClosed) {
+                    await managedBrowser.context.close()
+                }
+                if (managedBrowser.browserInstance && managedBrowser.browserInstance.isConnected()) {
+                    await managedBrowser.browserInstance.close()
+                }
+            } catch (forceCloseError) {
+                this.bot.log(managedBrowser.isMobile, 'CLOSE-BROWSER', `Force close also failed: ${forceCloseError}`, 'error')
+            }
+
+            throw new Error(`Browser cleanup failed: ${error}`)
+        }
+    }
+
+    // 保持向后兼容的方法（已弃用）
+    async closeBrowserLegacy(browser: BrowserContext, email: string) {
         try {
             // Save cookies
             await saveSessionData(this.bot.config.sessionPath, browser, email, this.bot.isMobile)
 
             await this.bot.utils.wait(2000)
 
-            // Close browser
+            // Close browser context only (legacy behavior)
             await browser.close()
-            this.bot.log(this.bot.isMobile, 'CLOSE-BROWSER', 'Browser closed cleanly!')
+            this.bot.log(this.bot.isMobile, 'CLOSE-BROWSER-LEGACY', 'Browser context closed (legacy mode - browser instance may still be running!)', 'warn')
         } catch (error) {
-            throw this.bot.log(this.bot.isMobile, 'CLOSE-BROWSER', 'An error occurred:' + error, 'error')
+            throw this.bot.log(this.bot.isMobile, 'CLOSE-BROWSER-LEGACY', 'An error occurred:' + error, 'error')
         }
     }
 }
