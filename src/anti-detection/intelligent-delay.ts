@@ -78,7 +78,7 @@ export class IntelligentDelaySystem {
         }
         
         const selectedPattern = this.selectWeightedRandom(behaviorPatterns)
-        return (selectedPattern as any).generator()
+        return selectedPattern()
     }
     
     /**
