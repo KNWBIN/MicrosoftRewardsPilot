@@ -2,17 +2,6 @@ import axios from 'axios'
 import { log } from './Logger'
 
 // API响应接口定义
-interface IpApiResponse {
-    country?: string
-    countryCode?: string
-    city?: string
-    timezone?: string
-    currency?: string
-    query?: string
-    lat?: number
-    lon?: number
-}
-
 interface IpapiCoResponse {
     country_name?: string
     country_code?: string
@@ -30,17 +19,6 @@ interface IpinfoResponse {
     timezone?: string
     ip?: string
     loc?: string
-}
-
-interface IpgeolocationResponse {
-    country_name?: string
-    country_code2?: string
-    city?: string
-    time_zone?: { name?: string }
-    currency?: { code?: string }
-    ip?: string
-    latitude?: string
-    longitude?: string
 }
 
 interface FreegeoipResponse {
@@ -96,11 +74,9 @@ export class GeoLanguageDetector {
         try {
             // 地理位置服务列表（按优先级排序）
             const geoServices = [
-                'http://ip-api.com/json',
                 'https://ipapi.co/json',
                 'https://ipinfo.io/json',
-                'https://api.ipgeolocation.io/ipgeo?apiKey=free',  // 添加新的备用服务
-                'https://freegeoip.app/json/'  // 添加新的备用服务
+                'https://freegeoip.app/json/'
             ]
 
             for (const service of geoServices) {
@@ -136,20 +112,7 @@ export class GeoLanguageDetector {
      */
     private static parseLocationResponse(data: unknown, service: string): GeoLocation | null {
         try {
-            if (service.includes('ip-api.com')) {
-                const apiData = data as IpApiResponse
-                return {
-                    country: apiData.country || 'Unknown',
-                    countryCode: apiData.countryCode || 'US',
-                    city: apiData.city || 'Unknown',
-                    timezone: apiData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    language: this.getLanguageFromCountry(apiData.countryCode || 'US'),
-                    currency: apiData.currency || 'USD',
-                    ip: apiData.query || 'Unknown',
-                    latitude: apiData.lat || 0,
-                    longitude: apiData.lon || 0
-                }
-            } else if (service.includes('ipapi.co')) {
+            if (service.includes('ipapi.co')) {
                 const apiData = data as IpapiCoResponse
                 return {
                     country: apiData.country_name || 'Unknown',
@@ -168,29 +131,15 @@ export class GeoLanguageDetector {
                 const coordinates = apiData.loc ? apiData.loc.split(',') : ['0', '0']
                 const lat = coordinates[0] || '0'
                 const lng = coordinates[1] || '0'
+                const countryCode = apiData.country || 'US'
+                const countryName = this.getCountryNameFromCode(countryCode)
                 return {
-                    country: apiData.country || 'US',
-                    countryCode: apiData.country || 'US',
+                    country: countryName,
+                    countryCode: countryCode,
                     city: apiData.city || 'Unknown',
                     timezone: apiData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    language: this.getLanguageFromCountry(apiData.country || 'US'),
+                    language: this.getLanguageFromCountry(countryCode),
                     currency: 'USD', // ipinfo.io不提供货币信息
-                    ip: apiData.ip || 'Unknown',
-                    latitude: parseFloat(lat) || 0,
-                    longitude: parseFloat(lng) || 0
-                }
-            } else if (service.includes('ipgeolocation.io')) {
-                const apiData = data as IpgeolocationResponse
-                // 添加 ipgeolocation.io 解析
-                const lat = apiData.latitude || '0'
-                const lng = apiData.longitude || '0'
-                return {
-                    country: apiData.country_name || 'Unknown',
-                    countryCode: apiData.country_code2 || 'US',
-                    city: apiData.city || 'Unknown',
-                    timezone: apiData.time_zone?.name || Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    language: this.getLanguageFromCountry(apiData.country_code2 || 'US'),
-                    currency: apiData.currency?.code || 'USD',
                     ip: apiData.ip || 'Unknown',
                     latitude: parseFloat(lat) || 0,
                     longitude: parseFloat(lng) || 0
@@ -265,27 +214,68 @@ export class GeoLanguageDetector {
     }
 
     /**
+     * 根据国家代码获取国家名称
+     */
+    private static getCountryNameFromCode(countryCode: string): string {
+        const countryNameMap: { [key: string]: string } = {
+            // 英语国家
+            'US': 'United States', 'GB': 'United Kingdom', 'CA': 'Canada', 'AU': 'Australia', 'NZ': 'New Zealand',
+            'IE': 'Ireland', 'ZA': 'South Africa',
+
+            // 亚洲国家
+            'JP': 'Japan', 'CN': 'China', 'TW': 'Taiwan', 'HK': 'Hong Kong', 'KR': 'South Korea',
+            'IN': 'India', 'TH': 'Thailand', 'VN': 'Vietnam', 'SG': 'Singapore', 'MY': 'Malaysia',
+            'PH': 'Philippines', 'ID': 'Indonesia',
+
+            // 欧洲国家
+            'DE': 'Germany', 'AT': 'Austria', 'CH': 'Switzerland', 'FR': 'France', 'BE': 'Belgium',
+            'IT': 'Italy', 'ES': 'Spain', 'PT': 'Portugal', 'NL': 'Netherlands', 'SE': 'Sweden',
+            'NO': 'Norway', 'DK': 'Denmark', 'FI': 'Finland', 'PL': 'Poland', 'CZ': 'Czech Republic',
+            'HU': 'Hungary', 'RO': 'Romania', 'BG': 'Bulgaria', 'HR': 'Croatia', 'GR': 'Greece',
+
+            // 美洲国家
+            'MX': 'Mexico', 'BR': 'Brazil', 'AR': 'Argentina', 'CL': 'Chile', 'CO': 'Colombia',
+            'PE': 'Peru', 'VE': 'Venezuela', 'UY': 'Uruguay', 'EC': 'Ecuador',
+
+            // 其他重要国家
+            'RU': 'Russia', 'TR': 'Turkey', 'SA': 'Saudi Arabia', 'AE': 'United Arab Emirates',
+            'IL': 'Israel', 'EG': 'Egypt', 'NG': 'Nigeria', 'KE': 'Kenya'
+        }
+        return countryNameMap[countryCode] || countryCode
+    }
+
+    /**
      * 根据国家代码获取主要语言
      */
     private static getLanguageFromCountry(countryCode: string): string {
         const countryLanguageMap: { [key: string]: string } = {
-            'US': 'en', 'GB': 'en', 'CA': 'en', 'AU': 'en', 'NZ': 'en',
+            // 英语国家
+            'US': 'en', 'GB': 'en', 'CA': 'en', 'AU': 'en', 'NZ': 'en', 'IE': 'en', 'ZA': 'en',
+
+            // 亚洲语言
             'JP': 'ja',
             'CN': 'zh-CN', 'TW': 'zh-TW', 'HK': 'zh-HK',
             'KR': 'ko',
+            'IN': 'hi', 'TH': 'th', 'VN': 'vi', 'SG': 'en', 'MY': 'ms', 'PH': 'en', 'ID': 'id',
+
+            // 欧洲语言
             'DE': 'de', 'AT': 'de', 'CH': 'de',
             'FR': 'fr', 'BE': 'fr',
             'IT': 'it',
-            'ES': 'es', 'MX': 'es', 'AR': 'es',
-            'RU': 'ru',
-            'IN': 'hi',
-            'BR': 'pt-BR',
+            'ES': 'es', 'PT': 'pt',
             'NL': 'nl',
-            'SE': 'sv',
-            'NO': 'no',
-            'DK': 'da',
-            'FI': 'fi',
-            'VN': 'vi'
+            'SE': 'sv', 'NO': 'no', 'DK': 'da', 'FI': 'fi',
+            'PL': 'pl', 'CZ': 'cs', 'HU': 'hu', 'RO': 'ro', 'BG': 'bg', 'HR': 'hr', 'GR': 'el',
+
+            // 美洲语言
+            'MX': 'es', 'AR': 'es', 'CL': 'es', 'CO': 'es', 'PE': 'es', 'VE': 'es', 'UY': 'es', 'EC': 'es',
+            'BR': 'pt-BR',
+
+            // 其他语言
+            'RU': 'ru',
+            'TR': 'tr',
+            'SA': 'ar', 'AE': 'ar', 'EG': 'ar',
+            'IL': 'he'
         }
 
         return countryLanguageMap[countryCode] || 'en'

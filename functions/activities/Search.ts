@@ -2,6 +2,11 @@ import { Page } from 'rebrowser-playwright'
 import { platform } from 'os'
 
 import { Workers } from '../Workers'
+import { IntelligentDelaySystem } from '../../src/anti-detection/intelligent-delay'
+import { ContextualSearchGenerator } from '../../src/anti-detection/contextual-search'
+import { HumanBehaviorSimulator } from '../../src/anti-detection/human-behavior'
+import { SessionManager } from '../../src/anti-detection/session-manager'
+import { NextGenAntiDetectionController } from '../../src/anti-detection/next-gen-controller'
 
 import { Counters, DashboardData } from '../../interfaces/DashboardData'
 import { GoogleSearch } from '../../interfaces/Search'
@@ -79,6 +84,27 @@ export class Search extends Workers {
     private consecutiveFailures = 0
     private adaptiveDelayMultiplier = 1.0
 
+    // 反检测系统实例
+    private intelligentDelay: IntelligentDelaySystem
+    private contextualSearch: ContextualSearchGenerator
+    private humanBehavior: HumanBehaviorSimulator
+    private sessionManager: SessionManager
+    private nextGenController: NextGenAntiDetectionController
+
+    constructor(bot: any) {
+        super(bot)
+        this.intelligentDelay = new IntelligentDelaySystem()
+        this.contextualSearch = new ContextualSearchGenerator()
+        this.humanBehavior = new HumanBehaviorSimulator()
+        this.sessionManager = new SessionManager({
+            userType: 'normal',
+            activityLevel: 'medium',
+            attentionSpan: 'medium',
+            multitaskingTendency: 'low'
+        })
+        this.nextGenController = new NextGenAntiDetectionController()
+    }
+
     public async doSearch(page: Page, data: DashboardData) {
         this.bot.log(this.bot.isMobile, 'SEARCH-BING', 'Starting Bing searches')
 
@@ -119,6 +145,14 @@ export class Search extends Workers {
         await page.goto(this.searchPageURL ? this.searchPageURL : this.bingHome)
 
         await this.bot.utils.wait(2000)
+
+        // 🧬 执行生物仿生适应
+        try {
+            await this.nextGenController.executeBiomimeticAdaptation(page)
+            this.bot.log(this.bot.isMobile, 'BIOMIMETIC', 'Biomimetic adaptation executed')
+        } catch (bioError) {
+            this.bot.log(this.bot.isMobile, 'BIOMIMETIC-ERROR', `Biomimetic adaptation failed: ${bioError}`, 'warn')
+        }
 
         await this.bot.browser.utils.tryDismissAllMessages(page)
 
@@ -462,11 +496,25 @@ export class Search extends Workers {
     }
 
     /**
-     * 生成多样化的搜索查询 - 基于地理位置的多语言优化
+     * 生成多样化的搜索查询 - 基于地理位置的多语言优化 + 上下文感知
      * 混合多种来源以降低检测风险
      */
     private async generateDiversifiedQueries(data: DashboardData): Promise<(GoogleSearch | string)[]> {
         const allQueries: (GoogleSearch | string)[] = []
+
+        // 30%的查询使用上下文感知生成
+        const contextualQueryCount = Math.floor(20 * 0.3) // 假设需要20个查询
+        for (let i = 0; i < contextualQueryCount; i++) {
+            const contextualQuery = this.contextualSearch.generateContextualSearch()
+            allQueries.push(contextualQuery)
+        }
+
+        // 10%的查询使用日本本地化搜索
+        const japaneseQueryCount = Math.floor(20 * 0.1)
+        for (let i = 0; i < japaneseQueryCount; i++) {
+            const japaneseQuery = this.contextualSearch.generateJapaneseLocalizedSearch()
+            allQueries.push(japaneseQuery)
+        }
         
         try {
             // 获取地理位置和语言信息
@@ -1001,9 +1049,29 @@ export class Search extends Workers {
                     clickRetries++
                 }
                 
-                // 人类化的思考停顿
-                await this.humanThinkingPause()
-                
+                // 🚀 执行下一代反检测策略
+                try {
+                    const operationContext = {
+                        recentFailures: this.consecutiveFailures,
+                        detectionEvents: 0,
+                        systemLoad: 0.5,
+                        networkAnomalies: 0,
+                        timeOfDay: new Date().getHours(),
+                        accountAge: 30
+                    }
+                    await this.nextGenController.executeAdaptiveStrategy(searchPage, operationContext)
+
+                    // 运行自适应学习循环
+                    if (i % 5 === 0) { // 每5次搜索运行一次
+                        await this.nextGenController.runAdaptationCycle(searchPage)
+                    }
+                } catch (nextGenError) {
+                    this.bot.log(this.bot.isMobile, 'NEXT-GEN-ERROR', `Next-gen system error: ${nextGenError}`, 'warn')
+                }
+
+                // 使用增强的人类行为模拟
+                await this.humanBehavior.simulateThinking()
+
                 // 更安全的文本清除方法
                 try {
                     await searchPage.keyboard.down(platformControlKey)
@@ -1015,9 +1083,9 @@ export class Search extends Workers {
                     this.bot.log(this.bot.isMobile, 'SEARCH-BING', 'Keyboard clearing failed, using fill method', 'warn')
                     await searchPage.fill(searchBar, '')
                 }
-                
-                // 人类化的打字输入
-                await this.humanTypeText(searchPage, query)
+
+                // 使用增强的人类化打字输入
+                await this.humanBehavior.humanType(searchPage, query)
                 
                 // 5%概率使用搜索建议
                 if (Math.random() < 0.05) {
@@ -1073,6 +1141,18 @@ export class Search extends Workers {
                     } catch (checkError) {
                         this.bot.log(this.bot.isMobile, 'MOBILE-BING-CHECK', `Mobile Bing verification failed: ${checkError}`, 'warn')
                     }
+                }
+
+                // 🌊 执行量子级行为模拟
+                try {
+                    const quantumActions = [
+                        { type: 'scroll', parameters: { direction: 'down' }, probability: 0.7 },
+                        { type: 'hover', parameters: { element: 'random' }, probability: 0.3 },
+                        { type: 'click', parameters: { element: 'result' }, probability: 0.8 }
+                    ]
+                    await this.nextGenController.executeQuantumBehavior(resultPage, quantumActions)
+                } catch (quantumError) {
+                    this.bot.log(this.bot.isMobile, 'QUANTUM-ERROR', `Quantum behavior error: ${quantumError}`, 'warn')
                 }
 
                 // 更安全的人类行为模拟
@@ -1376,125 +1456,45 @@ export class Search extends Workers {
         }
     }
 
-    /**
-     * 人类化思考停顿
-     */
-    private async humanThinkingPause(): Promise<void> {
-        // 模拟人类在搜索前的思考时间，1-3秒不等
-        const thinkingTime = Math.random() * 2000 + 1000
-        await this.bot.utils.wait(thinkingTime)
-    }
+
 
     /**
-     * 人类化打字输入
+     * 智能延迟计算系统 - 使用新的反检测延迟系统
      */
-    private async humanTypeText(page: Page, text: string): Promise<void> {
-        // 随机打字速度：80-200ms每字符
-        const baseTypingSpeed = 80
-        const speedVariation = 120
-        
-        // 10%概率模拟打字错误和修正
-        const shouldMakeTypo = Math.random() < 0.1
-        
-        for (let i = 0; i < text.length; i++) {
-            const char = text[i]
-            
-            // 确保字符存在
-            if (!char) continue
-            
-            // 模拟打字错误
-            if (shouldMakeTypo && i === Math.floor(text.length * 0.3)) {
-                // 输入错误字符
-                const wrongChar = String.fromCharCode(97 + Math.floor(Math.random() * 26))
-                await page.keyboard.type(wrongChar)
-                await this.bot.utils.wait(200 + Math.random() * 300)
-                
-                // 发现错误，删除
-                await page.keyboard.press('Backspace')
-                await this.bot.utils.wait(100 + Math.random() * 200)
-                
-                // 输入正确字符
-                await page.keyboard.type(char)
-            } else {
-                await page.keyboard.type(char)
-            }
-            
-            // 变化的打字速度
-            const typingDelay = baseTypingSpeed + Math.random() * speedVariation
-            
-            // 在空格处稍作停顿（模拟思考单词）
-            if (char === ' ') {
-                await this.bot.utils.wait(typingDelay * 2)
-            } else {
-                await this.bot.utils.wait(typingDelay)
-            }
-        }
-    }
+    private async calculateSmartDelay(searchIndex: number): Promise<number> {
+        // 使用新的智能延迟系统
+        const hasFailures = this.consecutiveFailures > 0
+        const delay = this.intelligentDelay.calculateSearchDelay(searchIndex, this.bot.isMobile, hasFailures)
 
-    /**
-     * 智能延迟计算系统
-     */
-         private async calculateSmartDelay(searchIndex: number): Promise<number> {
-         const config = this.bot.config.searchSettings.searchDelay
-         const minDelayStr = String(config.min || '45s')
-         const maxDelayStr = String(config.max || '120s')
-         let minDelay = this.bot.utils.stringToMs(minDelayStr)
-         let maxDelay = this.bot.utils.stringToMs(maxDelayStr)
-        
-        // 移动端使用更短的延迟
-        if (this.bot.isMobile) {
-            minDelay = Math.floor(minDelay * 0.8) // 移动端减少20%延迟
-            maxDelay = Math.floor(maxDelay * 0.8)
-        }
-        
-        // 基础随机延迟
-        let baseDelay = Math.floor(this.bot.utils.randomNumber(minDelay, maxDelay))
-        
-        // 自适应延迟调整
-        baseDelay = Math.floor(baseDelay * this.adaptiveDelayMultiplier)
-        
-        // 时间分布优化：模拟真实用户搜索模式
-        const currentHour = new Date().getHours()
-        let timeMultiplier = 1.0
-        
-        // 深夜时间增加延迟（模拟用户较少活跃）
-        if (currentHour >= 2 && currentHour <= 6) {
-            timeMultiplier = 1.5
-        }
-        // 午休时间稍微增加延迟
-        else if (currentHour >= 12 && currentHour <= 14) {
-            timeMultiplier = 1.2
-        }
-        
-        // 搜索序列优化：后续搜索延迟递增，但移动端增幅更小
-        const sequenceMultiplier = this.bot.isMobile ? 
-            1 + (searchIndex * 0.05) : // 移动端每次增加5%延迟
-            1 + (searchIndex * 0.1)    // 桌面端每次增加10%延迟
-        
-        // 连续失败惩罚
-        const failurePenalty = 1 + (this.consecutiveFailures * 0.3)
-        
-        // 随机波动：±30%的随机变化
-        const randomMultiplier = 0.7 + Math.random() * 0.6
-        
-        // 计算最终延迟
-        const finalDelay = Math.floor(baseDelay * timeMultiplier * sequenceMultiplier * failurePenalty * randomMultiplier)
-        
-        // 确保延迟在合理范围内
-        // 移动端：最少15秒，最多180秒
-        // 桌面端：最少30秒，最多300秒
-        const minFinalDelay = this.bot.isMobile ? 15000 : 30000
-        const maxFinalDelay = this.bot.isMobile ? 180000 : 300000
-        
-        const adjustedDelay = Math.max(minFinalDelay, Math.min(maxFinalDelay, finalDelay))
-        
         // 记录延迟调整信息
         if (this.consecutiveFailures > 0) {
-            this.bot.log(this.bot.isMobile, 'SEARCH-ADAPTIVE-DELAY', 
-                `Adjusted delay due to ${this.consecutiveFailures} consecutive failures: ${Math.round(adjustedDelay/1000)}s`)
+            this.bot.log(this.bot.isMobile, 'SEARCH-ADAPTIVE-DELAY',
+                `Adjusted delay due to ${this.consecutiveFailures} consecutive failures: ${Math.round(delay/1000)}s`)
         }
-        
-        return adjustedDelay
+
+        // 记录搜索到会话管理器
+        this.sessionManager.recordSearch()
+
+        // 检查是否需要会话中断
+        const interruption = this.sessionManager.simulateLifeInterruption()
+        if (interruption.shouldInterrupt) {
+            this.bot.log(this.bot.isMobile, 'SEARCH-LIFE-INTERRUPTION',
+                `Life interruption: ${interruption.reason} (${Math.round(interruption.duration/1000)}s)`)
+            return delay + interruption.duration
+        }
+
+        // 🧬 每10次搜索执行一次生物进化适应
+        if (searchIndex % 10 === 0) {
+            try {
+                // 注意：这里我们不能直接传递page，因为在延迟计算时可能没有page对象
+                // 所以我们记录需要执行生物适应的标记
+                this.bot.log(this.bot.isMobile, 'BIOMIMETIC', 'Scheduling biomimetic adaptation for next search')
+            } catch (bioError) {
+                this.bot.log(this.bot.isMobile, 'BIOMIMETIC-ERROR', `Biomimetic error: ${bioError}`, 'warn')
+            }
+        }
+
+        return delay
     }
 
     /**

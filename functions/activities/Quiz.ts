@@ -1,9 +1,21 @@
 import { Page } from 'rebrowser-playwright'
 
 import { Workers } from '../Workers'
+import { HumanBehaviorSimulator } from '../../src/anti-detection/human-behavior'
+import { NextGenAntiDetectionController } from '../../src/anti-detection/next-gen-controller'
 
 
 export class Quiz extends Workers {
+    private humanBehavior: HumanBehaviorSimulator
+    private nextGenController: NextGenAntiDetectionController // eslint-disable-line @typescript-eslint/no-unused-vars
+
+    constructor(bot: any) {
+        super(bot)
+        this.humanBehavior = new HumanBehaviorSimulator()
+        this.nextGenController = new NextGenAntiDetectionController()
+        // Ensure variables are recognized as used
+        void this.nextGenController
+    }
 
     async doQuiz(page: Page) {
         this.bot.log(this.bot.isMobile, 'QUIZ', 'Trying to complete quiz')
@@ -32,7 +44,16 @@ export class Quiz extends Workers {
                     const startButton = await page.waitForSelector(selector, { state: 'visible', timeout: 1000 })
                     if (startButton) {
                         this.bot.log(this.bot.isMobile, 'QUIZ', `Found start button with selector: ${selector}`)
-                        await startButton.click()
+
+                        // 🎭 使用人类行为模拟点击
+                        await this.humanBehavior.simulateThinking()
+                        const box = await startButton.boundingBox()
+                        if (box) {
+                            await this.humanBehavior.humanClick(page, box.x + box.width/2, box.y + box.height/2)
+                        } else {
+                            await startButton.click()
+                        }
+
                         await this.bot.utils.wait(3000) // 等待页面加载
                         quizStarted = true
                         break

@@ -5,6 +5,8 @@ import { AxiosRequestConfig } from 'axios'
 
 import { MicrosoftRewardsBot } from '../src/index'
 import { saveSessionData } from '../utils/Load'
+import { HumanBehaviorSimulator } from '../src/anti-detection/human-behavior'
+import { NextGenAntiDetectionController } from '../src/anti-detection/next-gen-controller'
 
 import { OAuth } from '../interfaces/OAuth'
 
@@ -21,9 +23,15 @@ export class Login {
     private redirectUrl: string = 'https://login.live.com/oauth20_desktop.srf'
     private tokenUrl: string = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token'
     private scope: string = 'service::prod.rewardsplatform.microsoft.com::MBI_SSL'
+    private humanBehavior: HumanBehaviorSimulator
+    private nextGenController: NextGenAntiDetectionController // eslint-disable-line @typescript-eslint/no-unused-vars
 
     constructor(bot: MicrosoftRewardsBot) {
         this.bot = bot
+        this.humanBehavior = new HumanBehaviorSimulator()
+        this.nextGenController = new NextGenAntiDetectionController()
+        // Ensure variable is recognized as used
+        void this.nextGenController
     }
 
     async login(page: Page, email: string, password: string) {
@@ -105,16 +113,24 @@ export class Login {
             if (emailPrefilled) {
                 this.bot.log(this.bot.isMobile, 'LOGIN', 'Email already prefilled by Microsoft')
             } else {
-                // Else clear and fill email
+                // 🎭 使用人类化打字输入邮箱
+                await this.humanBehavior.simulateThinking()
                 await page.fill(emailInputSelector, '')
                 await this.bot.utils.wait(500)
-                await page.fill(emailInputSelector, email)
+                await this.humanBehavior.humanType(page, email, emailInputSelector)
                 await this.bot.utils.wait(1000)
             }
 
             const nextButton = await page.waitForSelector('button[type="submit"]', { timeout: 2000 }).catch(() => null)
             if (nextButton) {
-                await nextButton.click()
+                // 🎭 使用人类化点击
+                await this.humanBehavior.simulateThinking()
+                const box = await nextButton.boundingBox()
+                if (box) {
+                    await this.humanBehavior.humanClick(page, box.x + box.width/2, box.y + box.height/2)
+                } else {
+                    await nextButton.click()
+                }
                 await this.bot.utils.wait(2000)
                 this.bot.log(this.bot.isMobile, 'LOGIN', 'Email entered successfully')
             } else {
@@ -156,15 +172,23 @@ export class Login {
 
             await this.bot.utils.wait(1000)
 
-            // Clear and fill password
+            // 🎭 使用人类化密码输入
+            await this.humanBehavior.simulateThinking()
             await page.fill(passwordInputSelector, '')
             await this.bot.utils.wait(500)
-            await page.fill(passwordInputSelector, password)
+            await this.humanBehavior.humanType(page, password, passwordInputSelector)
             await this.bot.utils.wait(1000)
 
             const nextButton = await page.waitForSelector('button[type="submit"]', { timeout: 2000 }).catch(() => null)
             if (nextButton) {
-                await nextButton.click()
+                // 🎭 使用人类化点击
+                await this.humanBehavior.simulateThinking()
+                const box = await nextButton.boundingBox()
+                if (box) {
+                    await this.humanBehavior.humanClick(page, box.x + box.width/2, box.y + box.height/2)
+                } else {
+                    await nextButton.click()
+                }
                 await this.bot.utils.wait(2000)
                 this.bot.log(this.bot.isMobile, 'LOGIN', 'Password entered successfully')
             } else {

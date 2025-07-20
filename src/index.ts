@@ -1,7 +1,7 @@
 import cluster from 'cluster'
 import { Page, BrowserContext } from 'rebrowser-playwright'
 
-import Browser from '../browser/Browser'
+import Browser, { ManagedBrowser } from '../browser/Browser'
 import BrowserFunc from '../browser/BrowserFunc'
 import BrowserUtil from '../browser/BrowserUtil'
 
@@ -289,11 +289,17 @@ export class MicrosoftRewardsBot {
     private async cleanupAccountResources(email: string): Promise<void> {
         try {
             log('main', 'CLEANUP', `Cleaning up resources for account ${email}`)
-            
-            // 这里可以添加具体的清理逻辑
-            // 比如关闭可能残留的浏览器实例、清理临时文件等
-            
-            await this.utils.wait(1000) // 给系统一点时间来清理资源
+
+            // 强制垃圾回收（如果可用）
+            if (global.gc) {
+                global.gc()
+                log('main', 'CLEANUP', 'Forced garbage collection')
+            }
+
+            // 给系统时间来清理资源
+            await this.utils.wait(2000)
+
+            log('main', 'CLEANUP', `Resource cleanup completed for account ${email}`)
         } catch (error) {
             log('main', 'CLEANUP-ERROR', `Resource cleanup failed for ${email}: ${error}`, 'error')
         }
@@ -311,12 +317,12 @@ export class MicrosoftRewardsBot {
 
     // Desktop
     async Desktop(account: Account): Promise<void> {
-        let browser
+        let managedBrowser: ManagedBrowser | null = null
         let workerPage
 
         try {
-            browser = await this.browserFactory.createBrowser(account.proxy, account.email)
-            this.homePage = await browser.newPage()
+            managedBrowser = await this.browserFactory.createBrowser(account.proxy, account.email)
+            this.homePage = await managedBrowser.context.newPage()
 
             log(this.isMobile, 'MAIN', 'Starting desktop browser')
 
@@ -345,12 +351,12 @@ export class MicrosoftRewardsBot {
                 log(this.isMobile, 'MAIN', 'No points to earn and "runOnZeroPoints" is set to "false", stopping!', 'log', 'yellow')
 
                 // Close desktop browser
-                await this.browser.func.closeBrowser(browser, account.email)
+                await this.browser.func.closeBrowser(managedBrowser)
                 return
             }
 
             // Open a new tab to where the tasks are going to be completed
-            workerPage = await browser.newPage()
+            workerPage = await managedBrowser.context.newPage()
 
             // Go to homepage on worker page
             await this.browser.func.goHome(workerPage)
@@ -359,14 +365,14 @@ export class MicrosoftRewardsBot {
             await this.executeDesktopTasks(workerPage, data)
 
             // Save cookies
-            await saveSessionData(this.config.sessionPath, browser, account.email, this.isMobile)
+            await saveSessionData(this.config.sessionPath, managedBrowser.context, account.email, this.isMobile)
 
             // Close desktop browser
-            await this.browser.func.closeBrowser(browser, account.email)
+            await this.browser.func.closeBrowser(managedBrowser)
 
         } catch (error) {
             log(this.isMobile, 'DESKTOP-ERROR', `Desktop task failed for ${account.email}: ${error}`, 'error')
-            
+
             // 确保资源被清理
             if (workerPage) {
                 try {
@@ -375,15 +381,15 @@ export class MicrosoftRewardsBot {
                     // 忽略关闭错误
                 }
             }
-            
-            if (browser) {
+
+            if (managedBrowser) {
                 try {
-                    await browser.close()
+                    await this.browser.func.closeBrowser(managedBrowser)
                 } catch (closeError) {
-                    log(this.isMobile, 'DESKTOP-CLEANUP', `Failed to close browser: ${closeError}`, 'error')
+                    log(this.isMobile, 'DESKTOP-CLEANUP', `Failed to close managed browser: ${closeError}`, 'error')
                 }
             }
-            
+
             throw error
         }
     }
@@ -435,14 +441,14 @@ export class MicrosoftRewardsBot {
     // Mobile
     async Mobile(account: Account, retryCount = 0): Promise<void> {
         // 正确读取重试设置，支持0值
-        const maxRetries = this.config.searchSettings?.retryMobileSearchAmount !== undefined 
-            ? this.config.searchSettings.retryMobileSearchAmount 
+        const maxRetries = this.config.searchSettings?.retryMobileSearchAmount !== undefined
+            ? this.config.searchSettings.retryMobileSearchAmount
             : 2
-        let browser
+        let managedBrowser: ManagedBrowser | null = null
 
         try {
-            browser = await this.browserFactory.createBrowser(account.proxy, account.email)
-            this.homePage = await browser.newPage()
+            managedBrowser = await this.browserFactory.createBrowser(account.proxy, account.email)
+            this.homePage = await managedBrowser.context.newPage()
 
             log(this.isMobile, 'MAIN', `Starting mobile browser (attempt ${retryCount + 1}/${maxRetries + 1})`)
 
@@ -466,7 +472,7 @@ export class MicrosoftRewardsBot {
                 log(this.isMobile, 'MAIN', 'No points to earn and "runOnZeroPoints" is set to "false", stopping!', 'log', 'yellow')
 
                 // Close mobile browser
-                await this.browser.func.closeBrowser(browser, account.email)
+                if (managedBrowser) await this.browser.func.closeBrowser(managedBrowser)
                 return
             }
 
@@ -500,7 +506,7 @@ export class MicrosoftRewardsBot {
             if (this.config.workers.doMobileSearch) {
                 try {
                     log(this.isMobile, 'MOBILE-TASK', 'Starting Mobile Search...')
-                await this.performMobileSearches(browser, data, account, retryCount, maxRetries)
+                await this.performMobileSearches(managedBrowser.context, data, account, retryCount, maxRetries)
                     log(this.isMobile, 'MOBILE-TASK', '✅ Completed Mobile Search')
                 } catch (error) {
                     log(this.isMobile, 'MOBILE-TASK', `❌ Mobile Search failed: ${error}`, 'error')
@@ -514,15 +520,15 @@ export class MicrosoftRewardsBot {
             log(this.isMobile, 'MAIN-POINTS', `The script collected ${afterPointAmount - this.pointsInitial} points today`)
 
             // Close mobile browser
-            await this.browser.func.closeBrowser(browser, account.email)
+            await this.browser.func.closeBrowser(managedBrowser)
 
         } catch (error) {
             // 确保浏览器被清理
-            if (browser) {
+            if (managedBrowser) {
                 try {
-                    await browser.close()
+                    await this.browser.func.closeBrowser(managedBrowser)
                 } catch (closeError) {
-                    log(this.isMobile, 'MOBILE-CLEANUP', `Failed to close browser: ${closeError}`, 'error')
+                    log(this.isMobile, 'MOBILE-CLEANUP', `Failed to close managed browser: ${closeError}`, 'error')
                 }
             }
             
@@ -596,8 +602,7 @@ export class MicrosoftRewardsBot {
                     log(this.isMobile, 'MAIN', `Mobile search incomplete (attempt ${retryCount + 1}/${maxRetries + 1}). Retrying with new browser...`, 'log', 'yellow')
                         log(this.isMobile, 'MOBILE-SEARCH-RETRY', `${remainingPoints} points still need to be earned`, 'warn')
 
-                    // Close current browser first
-                    await this.browser.func.closeBrowser(browser, account.email)
+                    // Browser will be closed in finally block
 
                     // Wait a bit before retry
                     await this.utils.wait(5000)
@@ -622,10 +627,14 @@ export class MicrosoftRewardsBot {
         } finally {
             // 确保worker页面被关闭
             try {
-                await workerPage.close()
+                if (typeof workerPage !== 'undefined') {
+                    await workerPage.close()
+                }
             } catch (closeError) {
                 // 忽略关闭错误
             }
+
+            // Browser cleanup is handled by the outer catch block
         }
     }
 

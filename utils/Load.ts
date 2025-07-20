@@ -94,14 +94,14 @@ function initFileWatching(): void {
 
     // 获取文件路径
     if (!configFilePath) {
-        configFilePath = path.join(__dirname, '../config/', 'config.json')
+        configFilePath = path.join(process.cwd(), 'config', 'config.json')
     }
     if (!accountsFilePath) {
         let file = 'accounts.json'
         if (process.argv.includes('-dev')) {
             file = 'accounts.dev.json'
         }
-        accountsFilePath = path.join(__dirname, '../config/', file)
+        accountsFilePath = path.join(process.cwd(), 'config', file)
     }
 
     // 创建防抖的重新加载函数
@@ -149,7 +149,8 @@ export function loadAccounts(): Account[] {
             file = 'accounts.dev.json'
         }
 
-        const accountDir = path.join(__dirname, '../config/', file)
+        // 使用项目根目录的配置文件，而不是相对于编译后的文件位置
+        const accountDir = path.join(process.cwd(), 'config', file)
         accountsFilePath = accountDir // 缓存路径
 
         // 检查文件是否存在
@@ -188,7 +189,8 @@ export function loadConfig(): Config {
             return configCache
         }
 
-        const configDir = path.join(__dirname, '../config/', 'config.json')
+        // 使用项目根目录的配置文件，而不是相对于编译后的文件位置
+        const configDir = path.join(process.cwd(), 'config', 'config.json')
         configFilePath = configDir // 缓存路径
 
         // 检查文件是否存在
