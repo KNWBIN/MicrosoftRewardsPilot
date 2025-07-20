@@ -444,9 +444,9 @@ class Manual2FAHelper {
                 const fs = await import('fs')
                 const path = await import('path')
                 
-                // 使用项目标准的会话保存路径 - src/sessions/[email]/
+                // 使用项目标准的会话保存路径 - sessions/[email]/
                 const projectRoot = process.cwd()
-                const sessionDir = path.join(projectRoot, 'src', 'sessions', email)
+                const sessionDir = path.join(projectRoot, 'sessions', email)
                 
                 // 确保会话目录存在
                 if (!fs.existsSync(sessionDir)) {

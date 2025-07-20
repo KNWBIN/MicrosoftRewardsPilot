@@ -7,7 +7,7 @@ services:
       ### 请先复制示例配置文件：cp config/*.example config/accounts.json && cp config/config.json.example config/config.json
       - ./config/accounts.json:/usr/src/microsoftrewardspilot/dist/config/accounts.json
       - ./config/config.json:/usr/src/microsoftrewardspilot/dist/config/config.json 
-      - ./sessions:/usr/src/microsoftrewardspilot/dist/browser/sessions # Optional, saves your login session
+      - ./sessions:/usr/src/microsoftrewardspilot/sessions # Optional, saves your login session
     environment:
       - NODE_ENV=production
       - CRON_SCHEDULE=0 9,16 * * * # Customize your schedule, use crontab.guru for formatting

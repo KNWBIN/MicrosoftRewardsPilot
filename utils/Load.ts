@@ -224,8 +224,8 @@ export function loadConfig(): Config {
 
 export async function loadSessionData(sessionPath: string, email: string, isMobile: boolean, saveFingerprint: ConfigSaveFingerprint) {
     try {
-        // Fetch cookie file
-        const cookieFile = path.join(__dirname, '../browser/', sessionPath, email, `${isMobile ? 'mobile_cookies' : 'desktop_cookies'}.json`)
+        // Fetch cookie file - 使用项目根目录的sessions路径
+        const cookieFile = path.join(process.cwd(), sessionPath, email, `${isMobile ? 'mobile_cookies' : 'desktop_cookies'}.json`)
 
         let cookies: Cookie[] = []
         if (fs.existsSync(cookieFile)) {
@@ -233,8 +233,8 @@ export async function loadSessionData(sessionPath: string, email: string, isMobi
             cookies = JSON.parse(cookiesData)
         }
 
-        // Fetch fingerprint file
-        const fingerprintFile = path.join(__dirname, '../browser/', sessionPath, email, `${isMobile ? 'mobile_fingerpint' : 'desktop_fingerpint'}.json`)
+        // Fetch fingerprint file - 使用项目根目录的sessions路径
+        const fingerprintFile = path.join(process.cwd(), sessionPath, email, `${isMobile ? 'mobile_fingerpint' : 'desktop_fingerpint'}.json`)
 
         let fingerprint!: BrowserFingerprintWithHeaders
         if (((saveFingerprint.desktop && !isMobile) || (saveFingerprint.mobile && isMobile)) && fs.existsSync(fingerprintFile)) {
@@ -256,8 +256,8 @@ export async function saveSessionData(sessionPath: string, browser: BrowserConte
     try {
         const cookies = await browser.cookies()
 
-        // Fetch path
-        const sessionDir = path.join(__dirname, '../browser/', sessionPath, email)
+        // Fetch path - 使用项目根目录的sessions路径
+        const sessionDir = path.join(process.cwd(), sessionPath, email)
 
         // Create session dir
         if (!fs.existsSync(sessionDir)) {
@@ -275,8 +275,8 @@ export async function saveSessionData(sessionPath: string, browser: BrowserConte
 
 export async function saveFingerprintData(sessionPath: string, email: string, isMobile: boolean, fingerpint: BrowserFingerprintWithHeaders): Promise<string> {
     try {
-        // Fetch path
-        const sessionDir = path.join(__dirname, '../browser/', sessionPath, email)
+        // Fetch path - 使用项目根目录的sessions路径
+        const sessionDir = path.join(process.cwd(), sessionPath, email)
 
         // Create session dir
         if (!fs.existsSync(sessionDir)) {
