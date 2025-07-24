@@ -18,6 +18,14 @@
         "doDailyCheckIn": true,
         "doReadToEarn": true
     },
+    "popupHandling": {
+        "enabled": true,
+        "handleReferralPopups": true,
+        "handleStreakProtectionPopups": true,
+        "handleStreakRestorePopups": true,
+        "handleGenericModals": true,
+        "logPopupHandling": true
+    },
     "searchOnBingLocalQueries": true,
     "globalTimeout": "180min",
     "accountDelay": {

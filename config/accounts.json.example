@@ -20,5 +20,16 @@
             "username": "",
             "password": ""
         }
+    },
+    {
+        "email": "3",
+        "password": "3",
+        "proxy": {
+            "proxyAxios": true,
+            "url": "",
+            "port": 0,
+            "username": "",
+            "password": ""
+        }
     }
 ]

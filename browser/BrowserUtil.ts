@@ -2,16 +2,33 @@ import { Page } from 'rebrowser-playwright'
 import { load } from 'cheerio'
 
 import { MicrosoftRewardsBot } from '../src/index'
+import { PopupHandler } from '../src/anti-detection/popup-handler'
 
 
 export default class BrowserUtil {
     private bot: MicrosoftRewardsBot
+    private popupHandler: PopupHandler
 
     constructor(bot: MicrosoftRewardsBot) {
         this.bot = bot
+        this.popupHandler = PopupHandler.getInstance()
+        // 传递配置给弹窗处理器
+        this.popupHandler.setConfig(bot.config)
     }
 
     async tryDismissAllMessages(page: Page): Promise<void> {
+        // 首先处理Microsoft Rewards弹窗
+        try {
+            const handledPopups = await this.popupHandler.handleAllPopups(page, 'DISMISS-MESSAGES')
+            if (handledPopups) {
+                this.bot.log(this.bot.isMobile, 'DISMISS-ALL-MESSAGES', 'Handled Microsoft Rewards popups')
+                await page.waitForTimeout(1000) // 等待弹窗关闭完成
+            }
+        } catch (error) {
+            this.bot.log(this.bot.isMobile, 'DISMISS-ALL-MESSAGES', `Popup handling error: ${error}`, 'warn')
+        }
+
+        // 然后处理传统的cookie和同意按钮
         const buttons = [
             { selector: '#acceptButton', label: 'AcceptButton' },
             { selector: '.ext-secondary.ext-button', label: '"Skip for now" Button' },
@@ -32,14 +49,50 @@ export default class BrowserUtil {
             try {
                 const element = button.isXPath ? page.locator(`xpath=${button.selector}`) : page.locator(button.selector)
                 await element.first().click({ timeout: 500 })
-                    await page.waitForTimeout(500)
-                    
+                await page.waitForTimeout(500)
+
                 this.bot.log(this.bot.isMobile, 'DISMISS-ALL-MESSAGES', `Dismissed: ${button.label}`)
-                    
-                         } catch (error) {
+
+            } catch (error) {
                 // Silent fail
+            }
         }
+    }
+
+    /**
+     * 专门处理Microsoft Rewards弹窗的方法
+     */
+    async handleRewardsPopups(page: Page): Promise<boolean> {
+        try {
+            const handledPopups = await this.popupHandler.handleAllPopups(page, 'REWARDS-POPUP')
+            if (handledPopups) {
+                this.bot.log(this.bot.isMobile, 'REWARDS-POPUP', 'Successfully handled Microsoft Rewards popups')
+                await page.waitForTimeout(1500) // 等待弹窗关闭和页面稳定
+                return true
+            }
+            return false
+        } catch (error) {
+            this.bot.log(this.bot.isMobile, 'REWARDS-POPUP', `Error handling popups: ${error}`, 'warn')
+            return false
         }
+    }
+
+    /**
+     * 检查页面是否有弹窗
+     */
+    async hasPopups(page: Page): Promise<boolean> {
+        try {
+            return await this.popupHandler.hasAnyPopup(page)
+        } catch (error) {
+            return false
+        }
+    }
+
+    /**
+     * 清理弹窗处理记录（用于新会话）
+     */
+    clearPopupHistory(): void {
+        this.popupHandler.clearHandledPopups()
     }
 
     async getLatestTab(page: Page): Promise<Page> {

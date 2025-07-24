@@ -46,6 +46,16 @@ export class Login {
 
             await this.bot.browser.utils.reloadBadPage(page)
 
+            // 🎯 在登录前检查并处理弹窗
+            try {
+                const handledPopups = await this.bot.browser.utils.handleRewardsPopups(page)
+                if (handledPopups) {
+                    this.bot.log(this.bot.isMobile, 'LOGIN', 'Handled popups before login')
+                }
+            } catch (popupError) {
+                this.bot.log(this.bot.isMobile, 'LOGIN', `Popup handling warning: ${popupError}`, 'warn')
+            }
+
             // Check if account is locked
             await this.checkAccountLocked(page)
 
@@ -572,6 +582,16 @@ export class Login {
         // Wait for login to complete
         await page.waitForSelector('html[data-role-name="RewardsPortal"]', { timeout: 10000 })
         this.bot.log(this.bot.isMobile, 'LOGIN', 'Successfully logged into the rewards portal')
+
+        // 🎯 登录成功后检查并处理弹窗
+        try {
+            const handledPopups = await this.bot.browser.utils.handleRewardsPopups(page)
+            if (handledPopups) {
+                this.bot.log(this.bot.isMobile, 'LOGIN', 'Handled popups after successful login')
+            }
+        } catch (popupError) {
+            this.bot.log(this.bot.isMobile, 'LOGIN', `Popup handling warning after login: ${popupError}`, 'warn')
+        }
     }
 
     private async dismissLoginMessages(page: Page) {

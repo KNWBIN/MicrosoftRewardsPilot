@@ -217,6 +217,9 @@ export class MicrosoftRewardsBot {
      */
     private async processAccount(account: Account): Promise<void> {
         this.axios = new Axios(account.proxy)
+
+        // 🎯 为新账户清理弹窗处理历史
+        this.browser.utils.clearPopupHistory()
         
                     if (this.config.parallel) {
                 // 并行处理，但要分别处理错误

@@ -127,7 +127,7 @@ export class Workers {
                 activityPage = await this.bot.browser.utils.getLatestTab(activityPage)
                 } catch (tabError) {
                     this.bot.log(this.bot.isMobile, 'ACTIVITY', `Failed to get latest tab, skipping activity "${activity.title}": ${tabError}`, 'warn')
-                    
+
                     // 尝试使用当前的 activityPage 继续
                     if (activityPage && !activityPage.isClosed()) {
                         this.bot.log(this.bot.isMobile, 'ACTIVITY', 'Using current page to continue', 'warn')
@@ -183,6 +183,16 @@ export class Workers {
                 */
                 await activityPage.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => { })
                 await this.bot.utils.wait(2000)
+
+                // 🎯 在活动处理前检查并处理弹窗
+                try {
+                    const handledPopups = await this.bot.browser.utils.handleRewardsPopups(activityPage)
+                    if (handledPopups) {
+                        this.bot.log(this.bot.isMobile, 'ACTIVITY', 'Handled popups before activity processing')
+                    }
+                } catch (popupError) {
+                    this.bot.log(this.bot.isMobile, 'ACTIVITY', `Popup handling warning: ${popupError}`, 'warn')
+                }
 
                 // 尝试多个选择器策略
                 const selectors = [

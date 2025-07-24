@@ -877,6 +877,16 @@ export class Search extends Workers {
                     await this.bot.utils.wait(2000)
                 }
 
+                // 🎯 在搜索前检查并处理弹窗
+                try {
+                    const handledPopups = await this.bot.browser.utils.handleRewardsPopups(searchPage)
+                    if (handledPopups) {
+                        this.bot.log(this.bot.isMobile, 'SEARCH-BING', 'Handled popups before search')
+                    }
+                } catch (popupError) {
+                    this.bot.log(this.bot.isMobile, 'SEARCH-BING', `Popup handling warning: ${popupError}`, 'warn')
+                }
+
                 // 检查页面是否仍然响应
                 try {
                     await searchPage.evaluate(() => document.readyState, { timeout: 5000 })
@@ -1105,6 +1115,16 @@ export class Search extends Workers {
                 // Bing.com in Chrome opens a new tab when searching
                 const resultPage = await this.bot.browser.utils.getLatestTab(searchPage)
                 this.searchPageURL = new URL(resultPage.url()).href // Set the results page
+
+                // 🎯 在搜索结果页面检查并处理弹窗
+                try {
+                    const handledPopups = await this.bot.browser.utils.handleRewardsPopups(resultPage)
+                    if (handledPopups) {
+                        this.bot.log(this.bot.isMobile, 'SEARCH-BING', 'Handled popups on search results page')
+                    }
+                } catch (popupError) {
+                    this.bot.log(this.bot.isMobile, 'SEARCH-BING', `Popup handling warning on results: ${popupError}`, 'warn')
+                }
 
                 // 添加页面加载超时检查
                 try {
