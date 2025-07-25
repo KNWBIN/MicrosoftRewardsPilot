@@ -19,12 +19,19 @@
         "doReadToEarn": true
     },
     "popupHandling": {
-        "enabled": true,
+        "enabled": false,
         "handleReferralPopups": true,
         "handleStreakProtectionPopups": true,
         "handleStreakRestorePopups": true,
         "handleGenericModals": true,
         "logPopupHandling": true
+    },
+    "passkeyHandling": {
+        "enabled": true,
+        "maxAttempts": 5,
+        "skipPasskeySetup": true,
+        "useDirectNavigation": true,
+        "logPasskeyHandling": true
     },
     "searchOnBingLocalQueries": true,
     "globalTimeout": "180min",

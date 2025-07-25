@@ -1,6 +1,6 @@
 <div align="center">
 
-<!-- 语言切换 / Language Switch / 言語切替 -->
+<!-- 言語切替 / Language Switch / 语言切换 -->
 **[中文](../README.md)** | **[English](README_EN.md)** | **[日本語](README_JA.md)**
 
 ---
@@ -151,7 +151,6 @@ services:
   }
 }
 ```
-
 ### Task Configuration
 ```json
 {
@@ -163,6 +162,33 @@ services:
     "doMobileSearch": true,    // Mobile search
     "doDailyCheckIn": true,    // Daily check-in
     "doReadToEarn": true       // Read to earn
+  }
+}
+```
+
+### Popup Handling Configuration
+```json
+{
+  "popupHandling": {
+    "enabled": false,                    // Enable popup handling (disabled by default)
+    "handleReferralPopups": true,        // Handle referral popups
+    "handleStreakProtectionPopups": true,// Handle streak protection popups
+    "handleStreakRestorePopups": true,   // Handle streak restore popups
+    "handleGenericModals": true,         // Handle generic modals
+    "logPopupHandling": true             // Log popup handling
+  }
+}
+```
+
+### Passkey Handling Configuration
+```json
+{
+  "passkeyHandling": {
+    "enabled": true,              // Enable Passkey handling
+    "maxAttempts": 5,             // Maximum attempts
+    "skipPasskeySetup": true,     // Skip Passkey setup
+    "useDirectNavigation": true,  // Use direct navigation as fallback
+    "logPasskeyHandling": true    // Log handling
   }
 }
 ```
@@ -190,6 +216,60 @@ npx tsx src/helpers/manual-2fa-helper.ts
 5. Tool automatically saves mobile session data
 6. Re-run automation program, mobile tasks will skip 2FA verification
 
+### **Popup Handling Issue**
+
+**Problem:** Program gets stuck in popup handling, infinite loop occurs
+
+**Symptoms:** Log shows repeated popup detection info
+```
+[REWARDS-POPUP] 🎯 Detected Streak Protection Popup
+[REWARDS-POPUP] 🎯 Detected Streak Protection Popup
+```
+
+**Solution:**
+1. **Immediate fix**: Disable popup handling in `config/config.json`
+```json
+{
+  "popupHandling": {
+    "enabled": false
+  }
+}
+```
+
+2. **Selective enable**: Only enable required popup types
+```json
+{
+  "popupHandling": {
+    "enabled": true,
+    "handleReferralPopups": true,
+    "handleStreakProtectionPopups": false,
+    "handleStreakRestorePopups": false
+  }
+}
+```
+
+### **Passkey Setup Loop Issue**
+
+**Problem:** After login, redirected to Passkey setup page, clicking "Skip for now" causes infinite loop
+
+**Symptoms:** Program stuck after "Starting login process!"
+
+**Solution:** System automatically handles Passkey loop issue
+- **Auto detection**: Detect Passkey setup page
+- **Multiple bypasses**: Skip button, ESC key, direct navigation
+- **Smart retry**: Up to 5 attempts to prevent infinite loop
+- **Configurable**: Adjust handling strategy via config
+
+**Config options:**
+```json
+{
+  "passkeyHandling": {
+    "enabled": true,
+    "maxAttempts": 5
+  }
+}
+```
+
 ### **Testing Tools**
 
 ```bash
@@ -201,6 +281,15 @@ npx tsx tests/test-geo-language.ts
 
 # Timezone setting test
 npx tsx tests/test-timezone-auto.ts
+
+# Popup handling test
+node tests/popup-handler-test.js
+
+# Popup infinite loop fix test
+node tests/popup-loop-fix-test.js
+
+# Passkey handling test
+node tests/passkey-handling-test.js
 
 # Quiz page debugging (use when quiz fails)
 npx tsx src/helpers/quiz-debug.ts "https://rewards.microsoft.com/quiz/xxx"
@@ -295,6 +384,8 @@ docker exec microsoftrewardspilot curl -s http://ip-api.com/json
 - **Ultimate Anti-Detection** - AI-level behavior simulation, device sensor injection, Canvas fingerprint noise
 - **Real User Simulation** - Error correction, search hesitation, accidental clicks and other human behaviors
 - **Statistical Anti-Detection** - Non-standard time distribution, fatigue algorithms, session segmentation
+- **Popup Smart Handling** - Auto-detect and close various Microsoft Rewards popups
+- **Passkey Loop Bypass** - Auto-handle Passkey setup loop issues
 - **Intelligent Quiz Adaptation** - Multiple data acquisition strategies
 - **Docker Support** - Containerized deployment
 - **Auto Retry** - Smart retry for failed tasks
@@ -410,6 +501,21 @@ docker exec microsoftrewardspilot curl -s http://ip-api.com/json
   "webhook": {
     "enabled": false,
     "url": ""
+  },
+  "popupHandling": {
+    "enabled": false,
+    "handleReferralPopups": true,
+    "handleStreakProtectionPopups": true,
+    "handleStreakRestorePopups": true,
+    "handleGenericModals": true,
+    "logPopupHandling": true
+  },
+  "passkeyHandling": {
+    "enabled": true,
+    "maxAttempts": 5,
+    "skipPasskeySetup": true,
+    "useDirectNavigation": true,
+    "logPasskeyHandling": true
   }
 }
 ```
@@ -422,14 +528,14 @@ docker exec microsoftrewardspilot curl -s http://ip-api.com/json
 
 <div align="center">
 
-> **Risk Warning**  
+> **Risk Warning**
 > Using automation scripts may result in account suspension
 
-> **Safety Recommendations**  
-> Use moderately, system automatically enables all anti-detection features
+> **Safety Recommendations**
+> Use moderately, system has automatically enabled all anti-detection features
 
-> **Regular Updates**  
-> Keep script updated to latest version
+> **Regular Updates**
+> Keep the script updated to the latest version
 
 </div>
 

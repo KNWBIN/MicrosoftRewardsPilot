@@ -95,6 +95,16 @@ export class Login {
             await this.enterPassword(page, password)
             await this.bot.utils.wait(2000)
 
+            // 🎯 检查并处理Passkey设置循环（密码输入后可能出现）
+            try {
+                const passkeyHandled = await this.handlePasskeySetupLoop(page)
+                if (passkeyHandled) {
+                    this.bot.log(this.bot.isMobile, 'LOGIN', 'Handled Passkey setup after password entry')
+                }
+            } catch (passkeyError) {
+                this.bot.log(this.bot.isMobile, 'LOGIN', `Passkey handling after password: ${passkeyError}`, 'warn')
+            }
+
             // Check if account is locked
             await this.checkAccountLocked(page)
 
@@ -583,6 +593,16 @@ export class Login {
         await page.waitForSelector('html[data-role-name="RewardsPortal"]', { timeout: 10000 })
         this.bot.log(this.bot.isMobile, 'LOGIN', 'Successfully logged into the rewards portal')
 
+        // 🎯 处理Passkey设置循环问题
+        try {
+            const passkeyHandled = await this.handlePasskeySetupLoop(page)
+            if (passkeyHandled) {
+                this.bot.log(this.bot.isMobile, 'LOGIN', 'Successfully bypassed Passkey setup loop')
+            }
+        } catch (passkeyError) {
+            this.bot.log(this.bot.isMobile, 'LOGIN', `Passkey handling warning: ${passkeyError}`, 'warn')
+        }
+
         // 🎯 登录成功后检查并处理弹窗
         try {
             const handledPopups = await this.bot.browser.utils.handleRewardsPopups(page)
@@ -592,6 +612,157 @@ export class Login {
         } catch (popupError) {
             this.bot.log(this.bot.isMobile, 'LOGIN', `Popup handling warning after login: ${popupError}`, 'warn')
         }
+    }
+
+    /**
+     * 处理Passkey设置循环问题
+     * Microsoft有时会强制显示Passkey设置页面，需要多种方式绕过
+     */
+    private async handlePasskeySetupLoop(page: Page): Promise<boolean> {
+        // 检查是否启用Passkey处理
+        if (this.bot.config?.passkeyHandling?.enabled === false) {
+            return false
+        }
+
+        const maxAttempts = this.bot.config?.passkeyHandling?.maxAttempts || 5
+        let attempts = 0
+
+        while (attempts < maxAttempts) {
+            attempts++
+
+            try {
+                // 检查是否在Passkey设置页面
+                const isPasskeyPage = await this.isPasskeySetupPage(page)
+                if (!isPasskeyPage) {
+                    this.bot.log(this.bot.isMobile, 'LOGIN-PASSKEY', 'Not on Passkey setup page, continuing')
+                    return false
+                }
+
+                this.bot.log(this.bot.isMobile, 'LOGIN-PASSKEY', `Detected Passkey setup page (attempt ${attempts}/${maxAttempts})`)
+
+                // 尝试多种跳过方法
+                const skipped = await this.attemptPasskeySkip(page)
+                if (skipped) {
+                    // 等待页面跳转
+                    await page.waitForTimeout(3000)
+
+                    // 检查是否成功跳过
+                    const stillOnPasskey = await this.isPasskeySetupPage(page)
+                    if (!stillOnPasskey) {
+                        this.bot.log(this.bot.isMobile, 'LOGIN-PASSKEY', 'Successfully skipped Passkey setup')
+                        return true
+                    } else {
+                        this.bot.log(this.bot.isMobile, 'LOGIN-PASSKEY', 'Still on Passkey page after skip attempt', 'warn')
+                    }
+                } else {
+                    this.bot.log(this.bot.isMobile, 'LOGIN-PASSKEY', 'Failed to find skip option', 'warn')
+                }
+
+                // 短暂等待后重试
+                await page.waitForTimeout(2000)
+
+            } catch (error) {
+                this.bot.log(this.bot.isMobile, 'LOGIN-PASSKEY', `Passkey handling error: ${error}`, 'warn')
+            }
+        }
+
+        this.bot.log(this.bot.isMobile, 'LOGIN-PASSKEY', `Failed to bypass Passkey setup after ${maxAttempts} attempts`, 'error')
+        return false
+    }
+
+    /**
+     * 检查是否在Passkey设置页面
+     */
+    private async isPasskeySetupPage(page: Page): Promise<boolean> {
+        try {
+            // 检查URL特征
+            const url = page.url().toLowerCase()
+            if (url.includes('passkey') || url.includes('fido') || url.includes('webauthn') || url.includes('authenticator')) {
+                return true
+            }
+
+            // 检查页面内容特征
+            const passkeyTexts = [
+                'Set up a passkey',
+                'Create a passkey',
+                'passkey',
+                'Passkey',
+                'Skip for now',
+                'Maybe later'
+            ]
+
+            for (const text of passkeyTexts) {
+                try {
+                    const element = await page.waitForSelector(`text=${text}`, { timeout: 1000 }).catch(() => null)
+                    if (element) {
+                        return true
+                    }
+                } catch {
+                    continue
+                }
+            }
+
+            return false
+        } catch {
+            return false
+        }
+    }
+
+    /**
+     * 尝试跳过Passkey设置
+     */
+    private async attemptPasskeySkip(page: Page): Promise<boolean> {
+        // 跳过按钮的选择器（使用更安全的属性选择器）
+        const skipSelectors = [
+            '[data-testid="secondaryButton"]', // Microsoft常用的次要按钮
+            'button[value*="skip"]',
+            'button[aria-label*="skip"]',
+            'button[data-action="skip"]',
+            '.skip-button',
+            '#skip-button',
+            'button[value="跳过"]',
+            'button[value="スキップ"]'
+        ]
+
+        for (const selector of skipSelectors) {
+            try {
+                const element = await page.waitForSelector(selector, {
+                    state: 'visible',
+                    timeout: 2000
+                }).catch(() => null)
+
+                if (element) {
+                    this.bot.log(this.bot.isMobile, 'LOGIN-PASSKEY', `Found skip button: ${selector}`)
+                    await element.click()
+                    await page.waitForTimeout(1000)
+                    return true
+                }
+            } catch {
+                continue
+            }
+        }
+
+        // 尝试ESC键
+        try {
+            this.bot.log(this.bot.isMobile, 'LOGIN-PASSKEY', 'Trying ESC key to skip Passkey setup')
+            await page.keyboard.press('Escape')
+            await page.waitForTimeout(1000)
+            return true
+        } catch {
+            // ESC失败
+        }
+
+        // 最后尝试直接导航
+        try {
+            this.bot.log(this.bot.isMobile, 'LOGIN-PASSKEY', 'Attempting direct navigation to rewards page')
+            await page.goto('https://rewards.bing.com', { waitUntil: 'networkidle' })
+            await page.waitForTimeout(2000)
+            return true
+        } catch (error) {
+            this.bot.log(this.bot.isMobile, 'LOGIN-PASSKEY', `Direct navigation failed: ${error}`, 'warn')
+        }
+
+        return false
     }
 
     private async dismissLoginMessages(page: Page) {

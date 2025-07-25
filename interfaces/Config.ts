@@ -18,6 +18,8 @@ export interface Config {
     webhookLogExcludeFunc: string[];
     proxy: ConfigProxy;
     webhook: ConfigWebhook;
+    popupHandling?: ConfigPopupHandling;
+    passkeyHandling?: ConfigPasskeyHandling;
 }
 
 export interface ConfigSaveFingerprint {
@@ -99,4 +101,21 @@ export interface ConfigAntiDetection {
     progressiveBackoff: boolean;
     maxConsecutiveFailures: number;
     cooldownPeriod: string;
+}
+
+export interface ConfigPopupHandling {
+    enabled: boolean;
+    handleReferralPopups?: boolean;
+    handleStreakProtectionPopups?: boolean;
+    handleStreakRestorePopups?: boolean;
+    handleGenericModals?: boolean;
+    logPopupHandling?: boolean;
+}
+
+export interface ConfigPasskeyHandling {
+    enabled: boolean;
+    maxAttempts?: number;
+    skipPasskeySetup?: boolean;
+    useDirectNavigation?: boolean;
+    logPasskeyHandling?: boolean;
 }

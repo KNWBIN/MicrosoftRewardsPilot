@@ -166,6 +166,33 @@ services:
 }
 ```
 
+### 弹窗处理配置
+```json
+{
+  "popupHandling": {
+    "enabled": false,                    // 是否启用弹窗处理（默认禁用）
+    "handleReferralPopups": true,        // 处理推荐弹窗
+    "handleStreakProtectionPopups": true,// 处理连击保护弹窗
+    "handleStreakRestorePopups": true,   // 处理连击恢复弹窗
+    "handleGenericModals": true,         // 处理通用模态框
+    "logPopupHandling": true             // 记录弹窗处理日志
+  }
+}
+```
+
+### Passkey处理配置
+```json
+{
+  "passkeyHandling": {
+    "enabled": true,              // 是否启用Passkey处理
+    "maxAttempts": 5,             // 最大尝试次数
+    "skipPasskeySetup": true,     // 跳过Passkey设置
+    "useDirectNavigation": true,  // 使用直接导航备选方案
+    "logPasskeyHandling": true    // 记录处理日志
+  }
+}
+```
+
 ---
 
 ## 故障排除与测试
@@ -189,17 +216,80 @@ npx tsx src/helpers/manual-2fa-helper.ts
 5. 工具自动保存移动端会话数据
 6. 重新运行自动化程序，移动端任务将跳过2FA验证
 
+### **弹窗处理问题**
+
+**问题：** 程序在弹窗处理时卡住不动，出现无限循环
+
+**现象：** 日志显示重复的弹窗检测信息
+```
+[REWARDS-POPUP] 🎯 Detected Streak Protection Popup
+[REWARDS-POPUP] 🎯 Detected Streak Protection Popup
+```
+
+**解决方案：**
+1. **立即解决**：在 `config/config.json` 中禁用弹窗处理
+```json
+{
+  "popupHandling": {
+    "enabled": false
+  }
+}
+```
+
+2. **选择性启用**：只启用需要的弹窗类型
+```json
+{
+  "popupHandling": {
+    "enabled": true,
+    "handleReferralPopups": true,
+    "handleStreakProtectionPopups": false,
+    "handleStreakRestorePopups": false
+  }
+}
+```
+
+### **Passkey设置循环问题**
+
+**问题：** 登录后被重定向到Passkey设置页面，点击"Skip for now"后形成无限循环
+
+**现象：** 程序在 "Starting login process!" 后卡住
+
+**解决方案：** 系统已自动处理Passkey循环问题
+- **自动检测**：检测Passkey设置页面
+- **多种绕过**：跳过按钮、ESC键、直接导航
+- **智能重试**：最多5次尝试，防止无限循环
+- **配置控制**：可通过配置调整处理策略
+
+**配置选项：**
+```json
+{
+  "passkeyHandling": {
+    "enabled": true,
+    "maxAttempts": 5
+  }
+}
+```
+
 ### **测试工具**
 
 ```bash
 # 配置测试
 npx tsx tests/test-dynamic-config.ts
 
-# 地理位置检测测试  
+# 地理位置检测测试
 npx tsx tests/test-geo-language.ts
 
 # 时区设置测试
 npx tsx tests/test-timezone-auto.ts
+
+# 弹窗处理功能测试
+node tests/popup-handler-test.js
+
+# 弹窗无限循环修复验证
+node tests/popup-loop-fix-test.js
+
+# Passkey处理功能测试
+node tests/passkey-handling-test.js
 
 # Quiz页面调试（当Quiz失效时使用）
 npx tsx src/helpers/quiz-debug.ts "https://rewards.microsoft.com/quiz/xxx"
@@ -294,6 +384,8 @@ docker exec microsoftrewardspilot curl -s http://ip-api.com/json
 - **终极防检测** - AI级别行为模拟、设备传感器注入、Canvas指纹噪声
 - **真实用户模拟** - 错误修正、搜索犹豫、意外点击等人类行为
 - **统计学反检测** - 非标准时间分布、疲劳算法、会话分段
+- **弹窗智能处理** - 自动检测和关闭各种Microsoft Rewards弹窗
+- **Passkey循环绕过** - 自动处理Passkey设置循环问题
 - **Quiz智能适配** - 多重数据获取策略
 - **Docker支持** - 容器化部署
 - **自动重试** - 失败任务智能重试
@@ -411,25 +503,39 @@ docker exec microsoftrewardspilot curl -s http://ip-api.com/json
   "webhook": {
     "enabled": false,
     "url": ""
+  },
+  "popupHandling": {
+    "enabled": false,
+    "handleReferralPopups": true,
+    "handleStreakProtectionPopups": true,
+    "handleStreakRestorePopups": true,
+    "handleGenericModals": true,
+    "logPopupHandling": true
+  },
+  "passkeyHandling": {
+    "enabled": true,
+    "maxAttempts": 5,
+    "skipPasskeySetup": true,
+    "useDirectNavigation": true,
+    "logPasskeyHandling": true
   }
 }
 ```
 
 </details>
 
----
 
 ## 重要提醒
 
 <div align="center">
 
-> **风险警告**  
+> **风险警告**
 > 使用自动化脚本可能导致账户被封禁
 
-> **安全建议**  
+> **安全建议**
 > 适度使用，系统已自动启用所有反检测功能
 
-> **定期更新**  
+> **定期更新**
 > 保持脚本为最新版本
 
 </div>

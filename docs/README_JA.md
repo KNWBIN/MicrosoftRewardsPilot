@@ -1,6 +1,6 @@
 <div align="center">
 
-<!-- 语言切换 / Language Switch / 言語切替 -->
+<!-- 言語切替 / Language Switch / 语言切换 -->
 **[中文](../README.md)** | **[English](README_EN.md)** | **[日本語](README_JA.md)**
 
 ---
@@ -151,7 +151,6 @@ services:
   }
 }
 ```
-
 ### タスク設定
 ```json
 {
@@ -163,6 +162,33 @@ services:
     "doMobileSearch": true,    // モバイル検索
     "doDailyCheckIn": true,    // 毎日チェックイン
     "doReadToEarn": true       // 読んで稼ぐ
+  }
+}
+```
+
+### ポップアップ処理設定
+```json
+{
+  "popupHandling": {
+    "enabled": false,                    // ポップアップ処理を有効化（デフォルトは無効）
+    "handleReferralPopups": true,        // 紹介ポップアップを処理
+    "handleStreakProtectionPopups": true,// 連続保護ポップアップを処理
+    "handleStreakRestorePopups": true,   // 連続復元ポップアップを処理
+    "handleGenericModals": true,         // 汎用モーダルを処理
+    "logPopupHandling": true             // ポップアップ処理ログを記録
+  }
+}
+```
+
+### Passkey処理設定
+```json
+{
+  "passkeyHandling": {
+    "enabled": true,              // Passkey処理を有効化
+    "maxAttempts": 5,             // 最大試行回数
+    "skipPasskeySetup": true,     // Passkey設定をスキップ
+    "useDirectNavigation": true,  // 直接ナビゲーションを使用
+    "logPasskeyHandling": true    // 処理ログを記録
   }
 }
 ```
@@ -190,6 +216,60 @@ npx tsx src/helpers/manual-2fa-helper.ts
 5. ツールが自動的にモバイルセッションデータを保存
 6. 自動化プログラムを再実行すると、モバイルタスクが2FA認証をスキップ
 
+### **ポップアップ処理問題**
+
+**問題：** プログラムがポップアップ処理で無限ループに陥る
+
+**現象：** ログに繰り返しポップアップ検出情報が表示される
+```
+[REWARDS-POPUP] 🎯 Detected Streak Protection Popup
+[REWARDS-POPUP] 🎯 Detected Streak Protection Popup
+```
+
+**解決方法：**
+1. **即時対応**：`config/config.json` でポップアップ処理を無効化
+```json
+{
+  "popupHandling": {
+    "enabled": false
+  }
+}
+```
+
+2. **選択的有効化**：必要なポップアップタイプのみ有効化
+```json
+{
+  "popupHandling": {
+    "enabled": true,
+    "handleReferralPopups": true,
+    "handleStreakProtectionPopups": false,
+    "handleStreakRestorePopups": false
+  }
+}
+```
+
+### **Passkey設定ループ問題**
+
+**問題：** ログイン後、Passkey設定ページにリダイレクトされ、「今はスキップ」をクリックしても無限ループになる
+
+**現象：** "Starting login process!" の後でプログラムが停止
+
+**解決方法：** システムが自動的にPasskeyループ問題を処理
+- **自動検出**：Passkey設定ページを検出
+- **複数の回避策**：スキップボタン、ESCキー、直接ナビゲーション
+- **スマートリトライ**：最大5回まで試行し無限ループを防止
+- **設定で制御可能**：configで処理戦略を調整可能
+
+**設定例：**
+```json
+{
+  "passkeyHandling": {
+    "enabled": true,
+    "maxAttempts": 5
+  }
+}
+```
+
 ### **テストツール**
 
 ```bash
@@ -201,6 +281,15 @@ npx tsx tests/test-geo-language.ts
 
 # タイムゾーン設定テスト
 npx tsx tests/test-timezone-auto.ts
+
+# ポップアップ処理テスト
+node tests/popup-handler-test.js
+
+# ポップアップ無限ループ修正テスト
+node tests/popup-loop-fix-test.js
+
+# Passkey処理テスト
+node tests/passkey-handling-test.js
 
 # クイズページデバッグ（クイズが失敗した時に使用）
 npx tsx src/helpers/quiz-debug.ts "https://rewards.microsoft.com/quiz/xxx"
@@ -295,7 +384,9 @@ docker exec microsoftrewardspilot curl -s http://ip-api.com/json
 - **究極の検出回避** - AIレベル行動シミュレーション、デバイスセンサー注入、Canvasフィンガープリントノイズ
 - **真のユーザーシミュレーション** - エラー修正、検索迷い、意図しないクリックなど人間の行動
 - **統計学的検出回避** - 非標準時間分布、疲労アルゴリズム、セッション分割
-- **インテリジェントクイズ適応** - 複数のデータ取得戦略
+- **ポップアップスマート処理** - Microsoft Rewardsの各種ポップアップを自動検出・閉じる
+- **Passkeyループ回避** - Passkey設定ループ問題を自動処理
+- **クイズインテリジェント適応** - 複数のデータ取得戦略
 - **Dockerサポート** - コンテナ化デプロイ
 - **自動リトライ** - 失敗タスクのスマートリトライ
 - **詳細ログ** - 完全な実行記録
@@ -410,6 +501,21 @@ docker exec microsoftrewardspilot curl -s http://ip-api.com/json
   "webhook": {
     "enabled": false,
     "url": ""
+  },
+  "popupHandling": {
+    "enabled": false,
+    "handleReferralPopups": true,
+    "handleStreakProtectionPopups": true,
+    "handleStreakRestorePopups": true,
+    "handleGenericModals": true,
+    "logPopupHandling": true
+  },
+  "passkeyHandling": {
+    "enabled": true,
+    "maxAttempts": 5,
+    "skipPasskeySetup": true,
+    "useDirectNavigation": true,
+    "logPasskeyHandling": true
   }
 }
 ```
