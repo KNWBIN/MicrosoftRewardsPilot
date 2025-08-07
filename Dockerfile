@@ -6,6 +6,7 @@ WORKDIR /usr/src/microsoftrewardspilot
 
 # Install necessary dependencies for Playwright, cron, and anti-detection
 RUN apt-get update && apt-get install -y \
+    vim \
     jq \
     cron \
     gettext-base \
@@ -65,4 +66,5 @@ CMD ["sh", "-c", "echo \"$TZ\" > /etc/timezone && \
     crontab /etc/cron.d/microsoftrewardspilot-cron && \
     cron -f & \
     ([ \"$RUN_ON_START\" = \"true\" ] && npm start) && \
+
     tail -f /var/log/cron.log"]
