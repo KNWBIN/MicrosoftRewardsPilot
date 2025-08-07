@@ -7,12 +7,27 @@ on:
     branches: [ "main" ]
 
 jobs:
-
-  build:
-
+  build-and-push:
     runs-on: ubuntu-latest
-
+    
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag microsoftrewardspilot:$(date +%s)
+      - uses: actions/checkout@v4
+      
+      - name: Set timestamp variable
+        run: echo "TIMESTAMP=$(date +%s)" >> $GITHUB_ENV
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USER }}/microsoftrewardspilot:latest
+            ${{ secrets.DOCKERHUB_USER }}/microsoftrewardspilot:${{ env.TIMESTAMP }}
