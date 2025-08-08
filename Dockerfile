@@ -38,6 +38,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy all files to the working directory
 COPY . .
+RUN chmod +x /usr/src/microsoftrewardspilot/start.sh
 
 # Install dependencies, set permissions, and build the script
 RUN npm install && \
@@ -52,19 +53,4 @@ COPY scripts/crontab.template /etc/cron.d/microsoftrewardspilot-cron.template
 RUN touch /var/log/cron.log
 
 # Define the command to run your application with cron optionally
-CMD ["sh", "-c", "echo \"$TZ\" > /etc/timezone && \
-    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
-    dpkg-reconfigure -f noninteractive tzdata && \
-    # Set anti-detection environment variables with defaults\
-    export ENABLE_ULTRA_ANTI_DETECTION=${ENABLE_ULTRA_ANTI_DETECTION:-true} && \
-    export STEALTH_LEVEL=${STEALTH_LEVEL:-ultimate} && \
-    export DYNAMIC_DELAY_MULTIPLIER=${DYNAMIC_DELAY_MULTIPLIER:-4.0} && \
-    export MAX_CONSECUTIVE_FAILURES=${MAX_CONSECUTIVE_FAILURES:-1} && \
-    export COOLDOWN_PERIOD=${COOLDOWN_PERIOD:-20min} && \
-    envsubst < /etc/cron.d/microsoftrewardspilot-cron.template > /etc/cron.d/microsoftrewardspilot-cron && \
-    chmod 0644 /etc/cron.d/microsoftrewardspilot-cron && \
-    crontab /etc/cron.d/microsoftrewardspilot-cron && \
-    cron -f & \
-    ([ \"$RUN_ON_START\" = \"true\" ] && npm start) && \
-
-    tail -f /var/log/cron.log"]
+ENTRYPOINT ["/usr/src/microsoftrewardspilot/start.sh"]
