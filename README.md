@@ -81,9 +81,9 @@ services:
     container_name: microsoftrewardspilot
     restart: unless-stopped
     volumes:
-      - ./config/accounts.json:/usr/src/microsoftrewardspilot/dist/accounts.json:ro
-      - ./config/config.json:/usr/src/microsoftrewardspilot/dist/config.json:ro
-      - ./sessions:/usr/src/microsoftrewardspilot/dist/browser/sessions
+      - ./config/accounts.json:/usr/src/microsoftrewardspilot/config/accounts.json:ro
+      - ./config/config.json:/usr/src/microsoftrewardspilot/config/config.json:ro
+      - ./sessions:/usr/src/microsoftrewardspilot/sessions
     environment:
       - TZ=Asia/Tokyo  # 根据地理位置设置
       - CRON_SCHEDULE=0 9,16 * * *  # 每天9点和16点运行
